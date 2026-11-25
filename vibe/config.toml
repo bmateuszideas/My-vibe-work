@@ -1,0 +1,129 @@
+theme = "solarized-dark"
+allowed_models = [
+    "mistral-large-4-0",
+    "deepseek-v4-1-flash-1017",
+    "zai-glm-5-3",
+    "zai-glm-5-3-flash",
+    "mistral-small-latest",
+]
+active_model = "mistral-large-4-0-3"
+default_agent = "orchestrator"
+default_approval_policy = "auto-approve"
+disable_welcome_banner_animation = true
+include_commit_signature = false
+outside_workdir = "ask"
+collapse_turn_details = true
+keep_awake = true
+
+[utility_models]
+smart_approve = "classifier"
+
+[[providers]]
+name = "mistral"
+api_base = "https://api.mistral.ai/v1"
+api_key_env_var = "MISTRAL_API_KEY"
+browser_auth_base_url = "https://console.mistral.ai"
+browser_auth_api_base_url = "https://console.mistral.ai/api"
+browser_auth_allow_origin_rewrite = false
+preserve_api_base = false
+api_style = "openai"
+backend = "mistral"
+reasoning_field_name = "reasoning_content"
+emits_finish_reason = true
+project_id = ""
+region = ""
+
+[providers.extra_headers]
+
+[tools.read_file]
+permission = "always"
+
+[tools.write_file]
+permission = "always"
+sensitive_patterns = [
+    "**/.env",
+    "**/.env.*",
+]
+
+[tools.edit]
+permission = "always"
+sensitive_patterns = [
+    "**/.env",
+    "**/.env.*",
+]
+
+[tools.bash]
+permission = "always"
+sensitive_patterns = [
+    "**/.env",
+    "**/.env.*",
+]
+
+[tools.web_search]
+permission = "always"
+
+[tools.web_fetch]
+permission = "always"
+
+[tools.skill]
+permission = "always"
+
+[tools.todo]
+permission = "always"
+
+[[models]]
+name = "mistral-large-4-0"
+provider = "mistral"
+alias = "mistral-large-4-0-3"
+thinking = "medium"
+input_price = 0.7
+output_price = 2.1
+cached_input_price = 0.07
+auto_compact_threshold = 500000
+
+[[models]]
+name = "deepseek-v4-1-flash-1017"
+provider = "mistral"
+alias = "deepseek-v4-1-flash"
+temperature = 1.0
+thinking = "high"
+input_price = 0.3
+output_price = 1.2
+cached_input_price = 0.007
+supports_images = false
+auto_compact_threshold = 500000
+
+[[models]]
+name = "zai-glm-5-3"
+provider = "mistral"
+alias = "glm-5-3"
+display_name = "GLM-5.3"
+temperature = 1.0
+thinking = "high"
+input_price = 1.4
+output_price = 4.4
+cached_input_price = 0.14
+supports_images = false
+auto_compact_threshold = 500000
+
+[[models]]
+name = "zai-glm-5-3-flash"
+provider = "mistral"
+alias = "zai-glm-5-3-flash"
+display_name = "GLM-5.3 Flash"
+temperature = 1.0
+thinking = "high"
+input_price = 0.15
+output_price = 0.5
+cached_input_price = 0.03
+supports_images = true
+auto_compact_threshold = 500000
+
+[[models]]
+name = "mistral-small-latest"
+provider = "mistral"
+alias = "classifier"
+input_price = 0.15
+output_price = 0.6
+cached_input_price = 0.015
+auto_compact_threshold = 200000

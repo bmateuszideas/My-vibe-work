@@ -1,0 +1,11 @@
+[project]
+name = "my-vibe-orchestrator"
+version = "0.1.0"
+description = "Conversational multiagent orchestrator built with the Mistral Agents SDK, configured one-to-one from pavelpenev/.vibe (vendored under vibe/)"
+requires-python = ">=3.12"
+dependencies = [
+    "mistralai-agents[koyeb]>=1.1.2,<1.2",
+]
+
+[tool.mistralai.agents]
+entrypoint = "main:agent"
