@@ -3,23 +3,30 @@ Repozytorium do pracy dla Mistral Vibe Code Web
 
 ## Agent-orchestrator (Mistral Agents SDK)
 
-Konwersacyjny agent-orchestrator zbudowany przy użyciu Mistral Agents SDK, skonfigurowany
-jeden do jednego z repozytorium https://github.com/pavelpenev/.vibe (zvendowany w `vibe/`).
+Konwersacyjny agent-orchestrator zbudowany przy użyciu Mistral Agents SDK. Zawartość repozytorium
+https://github.com/pavelpenev/.vibe jest sklonowana w całości do katalogu głównego, dokładnie w
+oryginalnej formie:
 
-- `vibe/` — konfiguracja 1:1 z `pavelpenev/.vibe`: `agents/*.toml` (profile subagentów),
-  `prompts/orchestrator.md` (system prompt), `skills/` (skille), `config.toml` (modele),
-  `scripts/`.
-- `main.py` — buduje `agents.Agent` o nazwie `orchestrator`:
-  - instrukcje wczytywane verbatim z `vibe/prompts/orchestrator.md`;
-  - 11 subagentów generowanych z `vibe/agents/*.toml` (name = nazwa pliku, description,
-    instructions, model z `active_model` mapowanego przez aliasy z `config.toml`,
-    `thinking`/`temperature` modelu → `reasoning_effort`/`temperature`);
-  - skille z `vibe/skills/` jako `LocalSkillBundle`;
-  - środowisko `MistralSandbox` (wymaga roli `cloud_user` u service account wdrożenia);
-  - `subagent_policy` z `concurrent_child_turn_limit=32` (odpowiednik limitu 32 aktywnych
-    subagentów z oryginalnego promptu; drzewo 2 poziomy jak w SDK);
-  - `permission_mode="auto"` (odpowiednik `default_approval_policy = "auto-approve"`).
-- `Dockerfile` — obraz workera dla wdrożenia zarządzanego (`CMD ["agents", "run-worker"]`).
+- `prompts/orchestrator.md` — system prompt orchestratora,
+- `agents/*.toml` (+ `agents/doc-reviewer.references/`) — profile 11 subagentów z pełnymi instrukcjami,
+- `skills/` — 9 skilli,
+- `scripts/` — skrypt `extract_lisp_forms.py`,
+- `config.toml` — konfiguracja modeli.
+
+Jedyne kodu napisany od zera to pętla agenta w `main.py`:
+
+- główny agent `orchestrator`: `instructions` z `prompts/orchestrator.md`,
+- po jednym `agents.Subagent` dla każdego profilu z `agents/*.toml` (oryginalne `description`,
+  `instructions`, model z `active_model` przez aliasy z `config.toml`, `thinking`/`temperature`
+  → `reasoning_effort`/`temperature`); model niedostępny na koncie zastępowany `mistral-large-4`
+  (`AVAILABLE_MODELS`/`FALLBACK_MODEL` w `main.py` — wszystkie modele z `config.toml` są dostępne),
+- skille jako `LocalSkillBundle` z katalogu `skills/`,
+- polityka uprawnień: `PermissionPolicy` z denylistą komend bash z `[tools.bash].denylist`
+  plików agentów (reguła `file_system.bash`, reszta `allow`, `permission_mode="auto"`),
+- ścieżki `~/.vibe/...` w instrukcjach zamieniane na względne wobec repozytorium (`./prompts/...`,
+  `./workspaces/...`),
+- `environment=MistralSandbox()` (rola `cloud_user`), `subagent_policy` limit 32 współbieżnych
+  subagentów, `builtins=Builtins(subagents=False)` na subagentach (drzewo 2 poziomy).
 
 ## Uruchomienie lokalne
 
@@ -29,39 +36,26 @@ printf 'MISTRAL_API_KEY=<klucz>\n' > .env
 uv run --env-file .env agents chat
 ```
 
-## Wdrożenie zarządzane na Mistral Cloud (Studio)
-
-Kod musi być zpushowany do GitHub — wdrożenie buduje obraz z commita:
+## Wdrożenie zarządzane (Mistral Cloud) — `agents deploy`
 
 ```bash
-git push origin <branch>
-# przez Mistral MCP: deploy_workflow_deployment(deployment_name="vibe-orchestrator",
-#   github_url="https://github.com/bmateuszideas/My-vibe-work", revision="<commit SHA>",
-#   build_directory=".", dockerfile_path="Dockerfile",
-#   service_account_roles=["cloud_user"])   # rola wymagana przez MistralSandbox
-# lub lokalnie: uv run agents deploy
+git push origin main
+uv run --env-file .env agents deploy        # buduje wypchnięty commit, rejestruje agenta "orchestrator"
 ```
+
+Wdrożenie: deployment `orchestrator`, agent `orchestrator` (Managed Agents w Studio).
 
 ## Współpraca z agentem przez Vibe
 
-- **Vibe Code Web**: po deployu agent jest dostępny pod adresem zwróconym przez deploy,
-  `https://chat.mistral.ai/managed-agents/orchestrator?source=agents_api` — tam prowadzisz
-  konwersacje (sesje), a w razie potrzeby Vibe Code Web klonuje też repozytorium GitHub
-  do sandboxa sesji.
-- **Mistral Studio**: `console.mistral.ai/build/managed-agents` — lista agentów, sesje
-  (`/sessions`) i trace (OpenTelemetry) każdego turna.
+- **Vibe Code Web**: adres zwrócony przez deploy,
+  `https://chat.mistral.ai/managed-agents/orchestrator?source=agents_api&shareContext=...`
+  — rozmowy z agentem; projekt z GitHub ląduje w sandboxie sesji (cwd).
+- **Studio**: `console.mistral.ai/build/managed-agents` — agent, sesje (`/sessions`), trace.
 - **CLI / programowo**: `uv run agents chat orchestrator` albo
-  `agents.Agent.load_from(agent_name="orchestrator")` w dowolnej aplikacji Python.
+  `agents.Agent.load_from(agent_name="orchestrator")`.
 
-## Różnice względem oryginalnej konfiguracji Vibe CLI
+## Uwagi
 
-- Narzędzia `agents.spawn` / `agents.list` / `agents.send_message` z promptu zastępuje
-  w SDK wbudowany zestaw narzędzi subagentów: subagenty deklaruje się po nazwie
-  (lista w system prompt), model uruchamia je, przesyła wiadomości i czeka na wyniki;
-  limity per-typ (1× designer/planner/plan-reviewer/design-reviewer, 4× pozostałe)
-  pozostają polityką w instrukcjach, a limit współbieżności egzekwuje `subagent_policy`.
-- `web_search` / `web_fetch` nie są wbudowanymi narzędziami Agents SDK — w tej konfiguracji
-  nie są podłączone (wymagałyby konektora lub zdalnego MCP); subagenci używają plików,
-  basha i skillów z sandboxa.
-- Ścieżki `~/.vibe/...` z oryginalnego promptu w sandboxie sesji odpowiadają katalogowi
-  roboczemu sesji (repozytorium GitHub wybrane w Vibe Code Web).
+- `web_search`/`web_fetch` nie są builtinami Agents SDK — wymagają konektora (np. Tavily) lub MCP.
+- Narzędzia `agents.spawn`/`agents.list` z oryginalnego promptu zastępuje w SDK wbudowany zestaw
+  narzędzi subagentów; limity per-typ zostają polityką w instrukcjach.
