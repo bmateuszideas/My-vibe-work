@@ -122,7 +122,7 @@ agent = agents.Agent(
     subagent_policy=agents.SubagentPolicy(concurrent_child_turn_limit=32),
     environment=agents.MistralSandbox(),
     skills=_load_skills(),
-    connectors=[agents.connector("web_search", run_as="deployment")],
+    connectors=[agents.connector("tavily", run_as="deployment")],
     permission_mode="auto",
     permission_policy=_permission_policy(),
     **_model_settings(_CONFIG["active_model"]),
