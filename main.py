@@ -89,9 +89,6 @@ def _load_subagents() -> list[agents.Subagent]:
             "instructions": _repo_relative(profile["instructions"]),
             "builtins": agents.Builtins(subagents=False),
         }
-        enabled_tools = set(profile.get("enabled_tools", []))
-        if not {"web_search", "web_fetch"} & enabled_tools:
-            kwargs["connectors"] = []
         if profile.get("active_model"):
             kwargs["model"] = _resolve_model(profile["active_model"])
             kwargs.update(_model_settings(profile["active_model"]))
@@ -120,9 +117,8 @@ agent = agents.Agent(
     instructions=_instructions,
     subagents=_load_subagents(),
     subagent_policy=agents.SubagentPolicy(concurrent_child_turn_limit=32),
-    environment=agents.MistralSandbox(),
+    environment=agents.MistralSandbox(network=agents.Network.all()),
     skills=_load_skills(),
-    connectors=[agents.connector("tavily", run_as="deployment")],
     permission_mode="auto",
     permission_policy=_permission_policy(),
     **_model_settings(_CONFIG["active_model"]),

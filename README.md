@@ -25,10 +25,9 @@ Jedyne kodu napisany od zera to pętla agenta w `main.py`:
   plików agentów (reguła `file_system.bash`, reszta `allow`, `permission_mode="auto"`),
 - ścieżki `~/.vibe/...` w instrukcjach zamieniane na względne wobec repozytorium (`./prompts/...`,
   `./workspaces/...`),
-- konektor `tavily` (sklep Studio, klucz Tavily jako **workspace credential**,
-  `run_as="deployment"` — bez OBO/hardeningu, działa unattended) daje agentom narzędzia
-  wyszukiwania/fetchowania stron (odpowiednik `web_search`/`web_fetch`); subagenci, których
-  `enabled_tools` w profilu nie zawiera web, dostają `connectors=[]` (czysty zbiór),
+- dostęp do sieci z sandboxa: `MistralSandbox(network=agents.Network.all())` — agenci używają
+  `curl`/`wget` w sandboxie jako odpowiednik `web_search`/`web_fetch` (bez konektora i klucza);
+  opcjonalnie można dodać konektor Tavily (`run_as="deployment"`, workspace credential),
 - `environment=MistralSandbox()` (rola `cloud_user`), `subagent_policy` limit 32 współbieżnych
   subagentów, `builtins=Builtins(subagents=False)` na subagentach (drzewo 2 poziomy).
 
@@ -60,8 +59,6 @@ Wdrożenie: deployment `orchestrator`, agent `orchestrator` (Managed Agents w St
 
 ## Uwagi
 
-- web idzie przez konektor **Tavily**: dodaj go w Studio
-  (`console.mistral.ai/connectors/marketplace?template=tavily`) z kluczem Tavily jako
-  workspace credential, potem `agents deploy` — agent używa go jako `run_as="deployment"`.
+- web działa przez egress sandboxa (`network=Network.all()`, curl/wget);
 - Narzędzia `agents.spawn`/`agents.list` z oryginalnego promptu zastępuje w SDK wbudowany zestaw
   narzędzi subagentów; limity per-typ zostają polityką w instrukcjach.
